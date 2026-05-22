@@ -1,0 +1,12 @@
+aiohttp>=3.9.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+tqdm>=4.66.0
+pydantic>=2.0.0
+Pillow>=10.0.0
+Unidecode>=1.3.8
+
+# Test-only dependencies
+aioresponses>=0.7.6
+hypothesis>=6.0.0
+pytest>=8.0.0

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ model.full_title }} — запчасти и характеристики{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="/index.html">Главная</a><span>&rsaquo;</span><a href="/{{ model.brand }}/index.html">{{ model.brand_upper }}</a><span>&rsaquo;</span>{{ model.model_name }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="model-header">
+  {% if model.preview_file %}
+  <div class="model-image">
+    <img src="/previews/{{ model.preview_file }}" alt="{{ model.full_title }}">
+  </div>
+  {% endif %}
+  <div class="model-info">
+    <h1>{{ model.full_title }}</h1>
+    <div class="meta">
+      {% if model.year %}Год: {{ model.year }}{% endif %}
+      {% if model.panel_diagonal %}&bull; Диагональ: {{ model.panel_diagonal }}{% endif %}
+    </div>
+    <span class="badge">{{ model.brand_upper }}</span>
+  </div>
+</div>
+
+{% if model.specs %}
+<h2 class="section-title">Основные компоненты</h2>
+<table class="shop_attributes">
+{% for label, value in model.specs %}
+  <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+{% if model.panel_specs %}
+<h2 class="section-title">Характеристики панели</h2>
+<table class="shop_attributes">
+{% for label, value in model.panel_specs %}
+  <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+{% if model.other_parts %}
+<h2 class="section-title">Прочие компоненты</h2>
+<table class="shop_attributes">
+{% for label, value in model.other_parts %}
+  <tr><th>{{ label }}</th><td>{{ value }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+{% endblock %}

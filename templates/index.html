@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}База моделей ТВ — справочник запчастей{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="/index.html">Главная</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">База моделей телевизоров</h1>
+<p class="page-subtitle">{{ total_models }} моделей &bull; {{ total_brands }} брендов &bull; Характеристики и запчасти для ремонта</p>
+
+<div class="brand-grid">
+{% for brand in brands %}
+  <a href="/{{ brand.slug }}/index.html" class="brand-card">
+    <span class="name">{{ brand.name }}</span>
+    <span class="count">{{ brand.count }}</span>
+  </a>
+{% endfor %}
+</div>
+{% endblock %}

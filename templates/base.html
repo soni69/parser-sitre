@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}База моделей ТВ{% endblock %} | BN94.ru</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+    a { color: #2563eb; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Header */
+    .site-header { background: #1a1a2e; color: #fff; padding: 0; }
+    .header-top { background: #12121f; padding: 6px 0; font-size: 0.8em; color: #999; }
+    .header-top .container { display: flex; justify-content: space-between; }
+    .header-main .container { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .logo { font-size: 1.6em; font-weight: 700; color: #fff; text-decoration: none; letter-spacing: -0.5px; }
+    .logo:hover { text-decoration: none; color: #fff; }
+    .main-nav { display: flex; gap: 24px; }
+    .main-nav a { color: #ddd; text-decoration: none; font-size: 0.95em; padding: 4px 0; }
+    .main-nav a:hover { color: #fff; text-decoration: none; }
+    .main-nav a.active { color: #fff; font-weight: 600; border-bottom: 2px solid #4f8cff; }
+
+    /* Breadcrumb */
+    .breadcrumb { padding: 14px 0; font-size: 0.85em; color: #888; }
+    .breadcrumb a { color: #666; }
+    .breadcrumb a:hover { color: #2563eb; }
+    .breadcrumb span { color: #aaa; margin: 0 6px; }
+
+    /* Main content */
+    .page-content { background: #fff; border-radius: 8px; padding: 32px; margin-top: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .page-title { font-size: 1.6em; margin-bottom: 6px; color: #1a1a2e; }
+    .page-subtitle { color: #888; font-size: 0.9em; margin-bottom: 24px; }
+
+    /* Brand grid */
+    .brand-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+    .brand-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px 18px; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; color: #333; }
+    .brand-card:hover { background: #eef4ff; border-color: #bdd4ff; box-shadow: 0 2px 8px rgba(37,99,235,0.08); text-decoration: none; }
+    .brand-card .name { font-weight: 600; font-size: 0.95em; }
+    .brand-card .count { color: #888; font-size: 0.8em; background: #e5e7eb; padding: 2px 8px; border-radius: 10px; }
+
+    /* Model list */
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .model-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; transition: all 0.2s; color: #333; }
+    .model-card:hover { background: #eef4ff; border-color: #bdd4ff; text-decoration: none; }
+    .model-card .model-title { font-weight: 600; font-size: 0.9em; }
+    .model-card .model-meta { color: #888; font-size: 0.8em; margin-top: 4px; }
+
+    /* Model page */
+    .model-header { display: flex; gap: 32px; margin-bottom: 28px; }
+    .model-image img { max-width: 280px; border-radius: 6px; border: 1px solid #eee; }
+    .model-info h1 { font-size: 1.5em; margin-bottom: 8px; }
+    .model-info .meta { color: #888; font-size: 0.9em; }
+    .badge { display: inline-block; background: #e8f4fd; color: #1a73e8; padding: 3px 10px; border-radius: 4px; font-size: 0.8em; font-weight: 600; margin-top: 8px; }
+
+    h2.section-title { font-size: 1.1em; margin: 24px 0 12px; color: #222; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; }
+
+    .shop_attributes { width: 100%; border-collapse: collapse; }
+    .shop_attributes tr:nth-child(even) { background: #f9fafb; }
+    .shop_attributes th { text-align: left; padding: 10px 14px; font-weight: 600; color: #555; width: 220px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+    .shop_attributes td { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 0.9em; word-break: break-word; }
+
+    /* Footer */
+    .site-footer { background: #1a1a2e; color: #999; padding: 32px 0; margin-top: 40px; }
+    .footer-content { display: flex; justify-content: space-between; align-items: center; }
+    .footer-content a { color: #ccc; }
+    .footer-links { display: flex; gap: 20px; font-size: 0.85em; }
+
+    @media (max-width: 768px) {
+      .model-header { flex-direction: column; }
+      .model-image img { max-width: 100%; }
+      .shop_attributes th { width: 130px; font-size: 0.8em; }
+      .shop_attributes td { font-size: 0.8em; }
+      .brand-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+      .model-grid { grid-template-columns: 1fr; }
+      .main-nav { gap: 12px; }
+      .footer-content { flex-direction: column; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-top">
+    <div class="container">
+      <span>Справочник запчастей для ремонта телевизоров</span>
+      <span>bn94.ru</span>
+    </div>
+  </div>
+  <div class="header-main">
+    <div class="container">
+      <a href="/index.html" class="logo">BN94</a>
+      <nav class="main-nav">
+        <a href="/index.html" class="active">База моделей</a>
+        <a href="https://bn94.ru/shop/">Магазин</a>
+        <a href="https://bn94.ru/category/zapchasti/zapchasti-dlya-televizorov/">Запчасти для ТВ</a>
+        <a href="https://bn94.ru/info/">Статьи</a>
+      </nav>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  {% block breadcrumb %}{% endblock %}
+  <div class="page-content">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-content">
+      <span>&copy; 2024 BN94.ru &mdash; Запчасти для ремонта телевизоров</span>
+      <div class="footer-links">
+        <a href="/index.html">База моделей</a>
+        <a href="https://bn94.ru/shop/">Магазин</a>
+        <a href="https://bn94.ru/">Главная сайта</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

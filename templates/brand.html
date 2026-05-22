@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ brand_name }} — модели телевизоров{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb">
+  <a href="/index.html">Главная</a><span>&rsaquo;</span>{{ brand_name }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1 class="page-title">{{ brand_name }}</h1>
+<p class="page-subtitle">{{ models|length }} моделей</p>
+
+<div class="model-grid">
+{% for m in models %}
+  <a href="/{{ brand_slug }}/{{ m.slug }}.html" class="model-card">
+    <div class="model-title">{{ m.full_title }}</div>
+    <div class="model-meta">
+      {% if m.panel_diagonal %}{{ m.panel_diagonal }}{% endif %}
+      {% if m.year %}&bull; {{ m.year }}{% endif %}
+      {% if m.specs|length > 0 %}&bull; {{ m.specs|length }} компонентов{% endif %}
+    </div>
+  </a>
+{% endfor %}
+</div>
+{% endblock %}

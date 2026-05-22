@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Editors / IDE
+.vscode/
+.idea/
+
+# Test / type cache
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+logs/*.log
+
+# Generated / runtime data — структура остаётся через .gitkeep
+data/tv_repairs.db
+data/tv_repairs.db-journal
+data/tv_repairs.db-wal
+data/tv_repairs.db-shm
+data/resume_state.json
+data/coverage_*.json
+data/data.rar
+data/csv/*
+!data/csv/.gitkeep
+data/json/*
+!data/json/.gitkeep
+data/previews/*
+!data/previews/.gitkeep
+data/raw/*
+!data/raw/.gitkeep
+data/wp_import/*
+!data/wp_import/.gitkeep
+
+# Generated site
+site_output/
+
+# OS
+Thumbs.db
+.DS_Store
