@@ -124,11 +124,14 @@ class TelSpbScraper:
       tv_soup = BeautifulSoup(tv_html, "html.parser")
       for a in tv_soup.find_all("a", href=True):
         href = normalize_url(a["href"])
-        path = urlparse(href).path
-        # Match /tv/brand-model links to extract brand slugs.
-        m_tv = re.match(r"^/tv/([a-z0-9][a-z0-9-]*?)-[a-z0-9]", path, re.I)
+        path = urlparse(href).path.lower()
+        # Match /tv/<brand>/ directory links (e.g. /tv/samsung/, /tv/lg/2021).
+        m_tv = re.match(r"^/tv/([a-z0-9][a-z0-9-]*)(?:/|$)", path)
         if m_tv:
           slug = m_tv.group(1).lower()
+          # Skip generic sub-paths that aren't brand slugs.
+          if slug in ("old", "price", "oled"):
+            continue
           found.setdefault(slug, f"{BASE_URL}/remont-tv-lcd/{slug}/")
     except Exception as exc:  # noqa: BLE001
       logger.warning("Failed to fetch /tv/ index for brand discovery: %s", exc)
@@ -337,18 +340,50 @@ class TelSpbScraper:
       r for r in sitemap_refs if r.brand.lower() == brand_slug_lc
     ]
 
-    # 5. Also collect refs from the /tv/ section for this brand.
+    # 5. Collect refs from the /tv/ section for this brand.
+    #    Strategy: fetch /tv/<brand>/ page, discover year/type sub-pages from
+    #    it (e.g. /tv/samsung/2021, /tv/samsung/lcd), then fetch each sub-page
+    #    and parse model links. The /tv/ index is only used for brand discovery
+    #    (in discover_brands), not for model collection.
     tv_refs: list[ModelRef] = []
-    tv_url = f"{BASE_URL}/tv/"
+    tv_brand_url = f"{BASE_URL}/tv/{brand_slug_lc}/"
     try:
-      tv_html, tv_err = await self._fetch_listing_html(
-        tv_url, brand_slug=brand_slug_lc, tracker=tracker
+      tv_brand_html, tv_brand_err = await self._fetch_listing_html(
+        tv_brand_url, brand_slug=brand_slug_lc, tracker=tracker
       )
-      if tv_html and tv_err is None:
-        # Parse /tv/ page looking for links matching this brand.
-        tv_refs = self._parse_tv_section(tv_html, brand_slug_lc, tv_url)
+      if tv_brand_html and tv_brand_err is None:
+        # Discover sub-pages (years, types) from the brand's /tv/ page.
+        tv_subpages = self._discover_tv_subpages(tv_brand_html, brand_slug_lc)
+        # Also parse the brand root page itself for models.
+        tv_refs.extend(
+          self._parse_tv_listing(tv_brand_html, brand_slug_lc, tv_brand_url)
+        )
+        for tv_sub_url in tv_subpages:
+          if self.should_stop():
+            break
+          # Skip the brand root if it's in the subpage list (already parsed).
+          if canonical_path(tv_sub_url) == canonical_path(tv_brand_url):
+            continue
+          tv_sub_html, tv_sub_err = await self._fetch_listing_html(
+            tv_sub_url, brand_slug=brand_slug_lc, tracker=tracker
+          )
+          if tv_sub_err is not None:
+            logger.warning(
+              "Brand %s: /tv/ sub-page error %s — %s",
+              brand_slug_lc, tv_sub_url, tv_sub_err,
+            )
+            continue
+          if tv_sub_html is None:
+            continue
+          tv_refs.extend(
+            self._parse_tv_listing(tv_sub_html, brand_slug_lc, tv_sub_url)
+          )
+        logger.debug(
+          "Brand %s: /tv/ section yielded %s refs from %s sub-pages",
+          brand_slug_lc, len(tv_refs), len(tv_subpages),
+        )
     except Exception as exc:  # noqa: BLE001
-      logger.warning("Brand %s: failed to fetch /tv/ section: %s", brand_slug_lc, exc)
+      logger.warning("Brand %s: failed to process /tv/ section: %s", brand_slug_lc, exc)
 
     if tracker is not None:
       tracker.record_discovered(brand_slug_lc, "sitemap", len(sitemap_for_brand))
@@ -401,13 +436,49 @@ class TelSpbScraper:
     refs.extend(self._parse_listing_rows(soup, brand_slug, source_page))
     return refs
 
-  def _parse_tv_section(
+  def _discover_tv_subpages(
+    self,
+    tv_brand_html: str,
+    brand_slug: str,
+  ) -> list[str]:
+    """Extract year/type sub-page URLs from a /tv/<brand>/ page.
+
+    Looks for links like ``/tv/<brand>/2021``, ``/tv/<brand>/oled``,
+    ``/tv/<brand>/lcd`` — anything under ``/tv/<brand_slug>/``.
+    Excludes ``/price`` pages (those are shop listings, not model catalogs).
+    The brand root page itself (``/tv/<brand>/``) is included in the result
+    so it also gets parsed for models.
+    """
+    soup = BeautifulSoup(tv_brand_html, "html.parser")
+    prefix = f"/tv/{brand_slug.lower()}"
+    urls: set[str] = set()
+
+    for a in soup.find_all("a", href=True):
+      href = a["href"]
+      full_url = normalize_url(href)
+      path = urlparse(full_url).path.lower().rstrip("/")
+      if not path.startswith(prefix):
+        continue
+      # Skip /price pages — those are shop listings, not model catalogs.
+      if path.endswith("/price") or "/price" in path:
+        continue
+      urls.add(full_url)
+
+    return sorted(urls)
+
+  def _parse_tv_listing(
     self,
     html: str,
     brand_slug: str,
     source_page: str,
   ) -> list[ModelRef]:
-    """Parse the /tv/ index page for model links belonging to ``brand_slug``."""
+    """Parse a /tv/ brand sub-page for model links belonging to ``brand_slug``.
+
+    Model links on /tv/ pages follow the pattern ``/tv/<brand>-<model>``
+    (matched by ``match_model_url`` which supports both ``/remont-tv-lcd/``
+    and ``/tv/`` prefixes). Also picks up ``/remont-tv-lcd/<brand>-<model>``
+    links if the page cross-references the main catalog.
+    """
     soup = BeautifulSoup(html, "html.parser")
     refs: list[ModelRef] = []
 
