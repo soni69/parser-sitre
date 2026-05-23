@@ -220,7 +220,16 @@ MODEL_PATH_RE = re.compile(
   re.IGNORECASE,
 )
 
+# Alternative /tv/ section uses the same brand-model pattern.
+TV_MODEL_PATH_RE = re.compile(
+  r"^/tv/(?P<brand>[a-z0-9][a-z0-9-]*?)-(?P<model>[a-z0-9][a-z0-9_-]*)$",
+  re.IGNORECASE,
+)
+
 _MODEL_SLUG_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
+
+# Prefixes that contain model pages (brand-model pattern after prefix).
+_MODEL_PREFIXES = ("/remont-tv-lcd/", "/tv/")
 
 
 def match_model_url(
@@ -229,27 +238,35 @@ def match_model_url(
 ) -> Optional[tuple[str, str]]:
   """Parse a Model_Page URL path into ``(brand_slug, model_slug)`` or ``None``.
 
+  Supports both ``/remont-tv-lcd/brand-model`` and ``/tv/brand-model`` paths.
+
   Strategy:
     1. If ``known_brand_slugs`` is provided, try the LONGEST slug that
-       prefixes the segment after ``/remont-tv-lcd/`` and is followed by ``-``
+       prefixes the segment after the known prefix and is followed by ``-``
        and a non-empty model slug. This unambiguously resolves cases like
        ``tcl-rowa-32led`` when both ``tcl`` and ``tcl-rowa`` are known brands.
-    2. Otherwise fall back to the lazy regex ``MODEL_PATH_RE``. The lazy
-       quantifier makes the brand portion the shortest viable slug; this is
-       correct for any single-hyphen scheme and is documented as best-effort
-       for unknown brands.
+    2. Otherwise fall back to the lazy regex. The lazy quantifier makes the
+       brand portion the shortest viable slug; this is correct for any
+       single-hyphen scheme and is documented as best-effort for unknown brands.
 
-  Paths that contain a ``/`` after ``/remont-tv-lcd/<slug>`` are rejected —
+  Paths that contain a ``/`` after the brand-model segment are rejected —
   those are Sub_Pages, not Model_Pages.
   """
   if not path:
     return None
 
   p = path.lower().rstrip("/")
-  if not p.startswith("/remont-tv-lcd/"):
+
+  # Determine which prefix matches.
+  prefix: Optional[str] = None
+  for pfx in _MODEL_PREFIXES:
+    if p.startswith(pfx):
+      prefix = pfx
+      break
+  if prefix is None:
     return None
 
-  tail = p[len("/remont-tv-lcd/"):]
+  tail = p[len(prefix):]
   if not tail:
     return None
   if "/" in tail:  # this is a sub-page, not a model page
@@ -267,7 +284,9 @@ def match_model_url(
       if model and _MODEL_SLUG_RE.fullmatch(model):
         return slug, model
 
-  m = MODEL_PATH_RE.match("/" + p.lstrip("/"))
+  # Fall back to regex matching.
+  regex = TV_MODEL_PATH_RE if prefix == "/tv/" else MODEL_PATH_RE
+  m = regex.match("/" + p.lstrip("/"))
   if not m:
     return None
   return m.group("brand"), m.group("model")

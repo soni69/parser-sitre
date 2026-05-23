@@ -18,6 +18,7 @@ from config import (
   MODEL_PAGE_RE,
   OTHER_PART_KEYWORDS,
   PANEL_SPEC_LABEL_MAP,
+  TV_INDEX_URL,
 )
 from discovery import collect_brand_subpages
 from images import fetch_and_save_preview, preview_path, resolve_image_url
@@ -116,6 +117,21 @@ class TelSpbScraper:
       slug = (opt.get("value") or "").strip().lower()
       if slug and re.fullmatch(r"[a-z0-9-]+", slug):
         found.setdefault(slug, f"{BASE_URL}/remont-tv-lcd/{slug}/")
+
+    # Also discover brands from the /tv/ section.
+    try:
+      tv_html = await self.fetch_html(TV_INDEX_URL)
+      tv_soup = BeautifulSoup(tv_html, "html.parser")
+      for a in tv_soup.find_all("a", href=True):
+        href = normalize_url(a["href"])
+        path = urlparse(href).path
+        # Match /tv/brand-model links to extract brand slugs.
+        m_tv = re.match(r"^/tv/([a-z0-9][a-z0-9-]*?)-[a-z0-9]", path, re.I)
+        if m_tv:
+          slug = m_tv.group(1).lower()
+          found.setdefault(slug, f"{BASE_URL}/remont-tv-lcd/{slug}/")
+    except Exception as exc:  # noqa: BLE001
+      logger.warning("Failed to fetch /tv/ index for brand discovery: %s", exc)
 
     self._led_brands = led_brands
     brands = sorted(found.items(), key=lambda x: x[0])
@@ -321,20 +337,34 @@ class TelSpbScraper:
       r for r in sitemap_refs if r.brand.lower() == brand_slug_lc
     ]
 
+    # 5. Also collect refs from the /tv/ section for this brand.
+    tv_refs: list[ModelRef] = []
+    tv_url = f"{BASE_URL}/tv/"
+    try:
+      tv_html, tv_err = await self._fetch_listing_html(
+        tv_url, brand_slug=brand_slug_lc, tracker=tracker
+      )
+      if tv_html and tv_err is None:
+        # Parse /tv/ page looking for links matching this brand.
+        tv_refs = self._parse_tv_section(tv_html, brand_slug_lc, tv_url)
+    except Exception as exc:  # noqa: BLE001
+      logger.warning("Brand %s: failed to fetch /tv/ section: %s", brand_slug_lc, exc)
+
     if tracker is not None:
       tracker.record_discovered(brand_slug_lc, "sitemap", len(sitemap_for_brand))
       tracker.record_discovered(brand_slug_lc, "brand_page", brand_page_count)
-      tracker.record_discovered(brand_slug_lc, "sub_page", sub_page_count)
+      tracker.record_discovered(brand_slug_lc, "sub_page", sub_page_count + len(tv_refs))
 
     logger.info(
-      "Brand %s: refs sitemap=%s brand_page=%s sub_page=%s",
+      "Brand %s: refs sitemap=%s brand_page=%s sub_page=%s tv_section=%s",
       brand_slug_lc,
       len(sitemap_for_brand),
       brand_page_count,
       sub_page_count,
+      len(tv_refs),
     )
 
-    return [*sitemap_for_brand, *page_refs]
+    return [*sitemap_for_brand, *page_refs, *tv_refs]
 
   def parse_brand_listing(
     self,
@@ -369,6 +399,36 @@ class TelSpbScraper:
 
     # Secondary: structured rows (table / div rows)
     refs.extend(self._parse_listing_rows(soup, brand_slug, source_page))
+    return refs
+
+  def _parse_tv_section(
+    self,
+    html: str,
+    brand_slug: str,
+    source_page: str,
+  ) -> list[ModelRef]:
+    """Parse the /tv/ index page for model links belonging to ``brand_slug``."""
+    soup = BeautifulSoup(html, "html.parser")
+    refs: list[ModelRef] = []
+
+    for a in soup.find_all("a", href=True):
+      href = a["href"]
+      path = urlparse(href).path
+      parsed = match_model_url(path, known_brand_slugs=self._known_slugs)
+      if not parsed or parsed[0] != brand_slug.lower():
+        continue
+      _, model_slug = parsed
+      model_raw = a.get_text(" ", strip=True) or model_slug
+      url = normalize_url(href)
+      for model_name in split_model_names(model_raw):
+        refs.append(
+          ModelRef(
+            brand=brand_slug,
+            model_name=model_name,
+            url=url,
+            source_page=source_page,
+          )
+        )
     return refs
 
   def _parse_listing_rows(
@@ -422,7 +482,8 @@ class TelSpbScraper:
 
   def _model_url(self, brand: str, model_name: str, fallback: str) -> str:
     path = urlparse(fallback).path
-    if re.search(MODEL_PAGE_RE, path, re.I):
+    # Accept both /remont-tv-lcd/brand-model and /tv/brand-model as valid model URLs.
+    if re.search(MODEL_PAGE_RE, path, re.I) or re.search(r"/tv/[a-z0-9]", path, re.I):
       return normalize_url(fallback)
     slug = re.sub(r"[^a-z0-9]+", "", model_name.lower())
     return f"{BASE_URL}/remont-tv-lcd/{brand.lower()}-{slug}"

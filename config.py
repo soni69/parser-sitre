@@ -60,6 +60,11 @@ USER_AGENTS = [
 BRAND_PAGE_RE = r"/remont-tv-lcd/([a-z0-9-]+)/?(?:led)?/?$"
 MODEL_PAGE_RE = r"/remont-tv-lcd/([a-z0-9]+)-([a-z0-9][a-z0-9_-]*)"
 
+# Alternative /tv/ section (same site, different URL scheme)
+TV_INDEX_PATH = "/tv/"
+TV_INDEX_URL = f"{BASE_URL}{TV_INDEX_PATH}"
+TV_MODEL_PAGE_RE = r"/tv/([a-z0-9][a-z0-9-]*?)-([a-z0-9][a-z0-9_-]*)"
+
 # Discovery (sitemap + brand sub-page BFS)
 SITEMAP_URL = f"{BASE_URL}/sitemap.xml"
 MAX_BRAND_SUBPAGES = 200

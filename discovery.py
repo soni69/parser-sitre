@@ -266,6 +266,7 @@ async def discover_models_from_sitemap(
         if not url:
           continue
         path = urlparse(url).path
+        # match_model_url now supports both /remont-tv-lcd/ and /tv/ paths.
         parsed = match_model_url(path, known_brand_slugs=known_brand_slugs)
         if parsed is None:
           continue
